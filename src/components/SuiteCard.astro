@@ -1,0 +1,104 @@
+---
+import type { Suite } from '../types/client';
+import { formatDate } from '../utils/format';
+
+interface Props {
+  suite: Suite;
+  brandColour: string;
+}
+
+const { suite, brandColour } = Astro.props;
+const passing = suite.failed === 0;
+
+const suiteTypeLabel: Record<string, string> = {
+  playwright: 'Playwright E2E',
+  lighthouse: 'Lighthouse',
+  api: 'API Tests',
+  accessibility: 'Accessibility',
+  load: 'Load Tests',
+};
+---
+
+<style define:vars={{ brandColour }}>
+  .card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #27ae60;
+  }
+  .status-dot.fail {
+    background: #c0392b;
+  }
+  .body {
+    flex: 1;
+  }
+  .name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #111;
+  }
+  .type {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 0.1rem;
+  }
+  .counts {
+    font-size: 0.82rem;
+    color: #555;
+    margin-top: 0.35rem;
+  }
+  .pass {
+    color: #27ae60;
+    font-weight: 600;
+  }
+  .fail {
+    color: #c0392b;
+    font-weight: 600;
+  }
+  .meta {
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 0.25rem;
+  }
+  .report-link a {
+    display: inline-block;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--brandColour);
+    border-radius: 4px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .report-link a:hover {
+    opacity: 0.85;
+  }
+</style>
+
+<div class="card">
+  <div class={`status-dot${passing ? '' : ' fail'}`}></div>
+  <div class="body">
+    <div class="name">{suite.name}</div>
+    <div class="type">{suiteTypeLabel[suite.type] ?? suite.type}</div>
+    <div class="counts">
+      <span class="pass">{suite.passed} passed</span>
+      {suite.failed > 0 && <span> &middot; <span class="fail">{suite.failed} failed</span></span>}
+      &nbsp;of {suite.total} total
+    </div>
+    <div class="meta">Last run: {formatDate(suite.lastRun)}</div>
+  </div>
+  <div class="report-link">
+    <a href={suite.reportUrl} target="_blank" rel="noopener noreferrer">View Report</a>
+  </div>
+</div>

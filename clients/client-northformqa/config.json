@@ -1,0 +1,16 @@
+{
+  "slug": "client-northformqa",
+  "displayName": "Northform QA",
+  "brandColour": "#005EA2",
+  "suites": [
+    {
+      "name": "Playwright E2E",
+      "type": "playwright",
+      "reportUrl": "https://northform-qa.github.io/northform/client-northformqa/latest/",
+      "lastRun": "2026-05-02T00:00:00Z",
+      "passed": 6,
+      "failed": 0,
+      "total": 6
+    }
+  ]
+}
