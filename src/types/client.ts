@@ -1,5 +1,10 @@
 export type SuiteType = 'playwright' | 'lighthouse' | 'api' | 'accessibility' | 'load';
 
+export interface RunHistory {
+  passed: number;
+  total: number;
+}
+
 export interface Suite {
   name: string;
   type: SuiteType;
@@ -8,6 +13,7 @@ export interface Suite {
   passed: number;
   failed: number;
   total: number;
+  history?: RunHistory[]; // last N runs, oldest first
 }
 
 export interface ClientConfig {

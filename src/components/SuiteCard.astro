@@ -1,104 +1,182 @@
 ---
 import type { Suite } from '../types/client';
-import { formatDate } from '../utils/format';
+import { formatDateOnly } from '../utils/format';
 
 interface Props {
   suite: Suite;
-  brandColour: string;
 }
 
-const { suite, brandColour } = Astro.props;
-const passing = suite.failed === 0;
+const { suite } = Astro.props;
 
-const suiteTypeLabel: Record<string, string> = {
-  playwright: 'Playwright E2E',
-  lighthouse: 'Lighthouse',
-  api: 'API Tests',
-  accessibility: 'Accessibility',
-  load: 'Load Tests',
-};
+const isPassing = suite.failed === 0;
+const metaDate = formatDateOnly(suite.lastRun);
+
+// Last 6 runs for sparkline; fall back to current run if no history
+const history = suite.history ?? [{ passed: suite.passed, total: suite.total }];
+const sparkBars = history.slice(-6);
+
+// Build aria description for sparkline
+const sparkDesc = sparkBars
+  .map((r) => (r.passed === r.total ? 'passing' : 'failing'))
+  .join(', ');
 ---
 
-<style define:vars={{ brandColour }}>
-  .card {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 1.25rem 1.5rem;
+<article class="suite-card">
+  <div class="suite-left">
+    <span
+      class:list={['status-dot', isPassing ? 'status-dot-pass' : 'status-dot-fail']}
+      role="img"
+      aria-label={isPassing ? 'Suite passing' : 'Suite failing'}
+    ></span>
+    <div class="suite-info">
+      <h2 class="suite-name">{suite.name}</h2>
+      <p class="suite-meta">
+        <span class="meta-pass">{suite.passed} passed</span>
+        {suite.failed > 0 && (
+          <span class="meta-muted">, <span class="meta-fail">{suite.failed} failed</span></span>
+        )}
+        <span class="meta-muted"> of {suite.total} total · Last run {metaDate}</span>
+      </p>
+      <div
+        class="sparkline"
+        role="img"
+        aria-label={`Run history (last ${sparkBars.length}): ${sparkDesc}`}
+      >
+        {sparkBars.map((run) => {
+          const rate = run.total > 0 ? run.passed / run.total : 0;
+          const barPassing = run.passed === run.total;
+          const heightPx = Math.max(3, Math.round(rate * 20));
+          return (
+            <div
+              class:list={['spark-bar', barPassing ? 'spark-bar-pass' : 'spark-bar-fail']}
+              style={`height: ${heightPx}px`}
+            ></div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+  <div class="suite-right">
+    <a
+      href={suite.reportUrl}
+      class="view-report-btn"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`View report for ${suite.name}`}
+    >
+      View Report
+    </a>
+  </div>
+</article>
+
+<style>
+  .suite-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
     display: flex;
     align-items: center;
-    gap: 1.25rem;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    transition: border-color 200ms ease-out;
   }
+
+  .suite-card:hover {
+    border-color: var(--border-hover);
+  }
+
+  .suite-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+  }
+
   .status-dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
-    background: #27ae60;
+    margin-top: 5px;
   }
-  .status-dot.fail {
-    background: #c0392b;
-  }
-  .body {
+
+  .status-dot-pass { background: var(--pass); }
+  .status-dot-fail { background: var(--fail); }
+
+  .suite-info {
     flex: 1;
+    min-width: 0;
   }
-  .name {
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: #111;
+
+  .suite-name {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--fg-primary);
+    margin-bottom: 3px;
   }
-  .type {
-    font-size: 0.75rem;
-    color: #888;
-    margin-top: 0.1rem;
+
+  .suite-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--fg-muted);
   }
-  .counts {
-    font-size: 0.82rem;
-    color: #555;
-    margin-top: 0.35rem;
+
+  .meta-pass { color: var(--pass); }
+  .meta-fail { color: var(--fail); }
+  .meta-muted { color: var(--fg-muted); }
+
+  /* ── Sparkline ── */
+  .sparkline {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 20px;
+    margin-top: 6px;
   }
-  .pass {
-    color: #27ae60;
-    font-weight: 600;
+
+  .spark-bar {
+    width: 5px;
+    border-radius: 2px;
+    min-height: 3px;
   }
-  .fail {
-    color: #c0392b;
-    font-weight: 600;
+
+  .spark-bar-pass { background: var(--pass); }
+  .spark-bar-fail { background: var(--fail); }
+
+  /* ── View Report button ── */
+  .suite-right {
+    flex-shrink: 0;
   }
-  .meta {
-    font-size: 0.75rem;
-    color: #999;
-    margin-top: 0.25rem;
-  }
-  .report-link a {
-    display: inline-block;
-    padding: 0.4rem 0.9rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #fff;
-    background: var(--brandColour);
-    border-radius: 4px;
+
+  .view-report-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: var(--bg-base);
+    border: none;
+    border-radius: 8px;
+    height: 36px;
+    padding: 0 16px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
     text-decoration: none;
+    cursor: pointer;
+    transition: filter 200ms ease-out;
     white-space: nowrap;
   }
-  .report-link a:hover {
-    opacity: 0.85;
+
+  .view-report-btn:hover {
+    filter: brightness(1.1);
+  }
+
+  .view-report-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 </style>
-
-<div class="card">
-  <div class={`status-dot${passing ? '' : ' fail'}`}></div>
-  <div class="body">
-    <div class="name">{suite.name}</div>
-    <div class="type">{suiteTypeLabel[suite.type] ?? suite.type}</div>
-    <div class="counts">
-      <span class="pass">{suite.passed} passed</span>
-      {suite.failed > 0 && <span> &middot; <span class="fail">{suite.failed} failed</span></span>}
-      &nbsp;of {suite.total} total
-    </div>
-    <div class="meta">Last run: {formatDate(suite.lastRun)}</div>
-  </div>
-  <div class="report-link">
-    <a href={suite.reportUrl} target="_blank" rel="noopener noreferrer">View Report</a>
-  </div>
-</div>
